@@ -1,6 +1,7 @@
 package jay.desktopicon
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,14 +9,17 @@ import androidx.compose.material.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import java.awt.Desktop
 import java.io.File
 import kotlin.text.Charsets
 
@@ -147,9 +151,21 @@ fun StaticHorizontalGrid(data: List<IconInfo>, columns: Int) {
 @Composable
 fun IconCard(info: IconInfo) {
     val iconPainter = rememberIconPainter(info.icon)
+    val scope = rememberCoroutineScope()
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        Desktop.getDesktop().open(File(info.filePath))
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        // 可以选择在这里显示一个错误提示
+                    }
+                }
+            },
         elevation = 2.dp
     ) {
         Column(

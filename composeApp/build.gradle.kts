@@ -37,9 +37,12 @@ compose.desktop {
         mainClass = "jay.desktopicon.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "jay.desktopicon"
+            targetFormats(TargetFormat.Deb)
+            packageName = "desktopicons"
             packageVersion = "1.0.0"
+            linux {
+                iconFile.set(project.file("src/jvmMain/resources/logo.png"))
+            }
         }
     }
 }
