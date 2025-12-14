@@ -1,49 +1,117 @@
 package jay.desktopicon
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-import desktopicon.composeapp.generated.resources.Res
-import desktopicon.composeapp.generated.resources.compose_multiplatform
+typealias IconMap = Map<String, List<String>>
+fun fetchAllIconsGrouped(): IconMap {
+    val fileFinder = FileFinder()
 
+    val groupedIcons = mutableMapOf<String, List<String>>()
+
+    iconDirectory.forEach { folder ->
+        val fileList = fileFinder.openFolder(folder)
+        val iconList = fileFinder.filterIcon(fileList)
+        // 将结果以 Map 的形式存储
+        groupedIcons[folder] = iconList
+    }
+    return groupedIcons
+}
 @Composable
 @Preview
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+    val iconMap by produceState<IconMap>(initialValue = emptyMap()) {
+        value = withContext(Dispatchers.IO) {
+            fetchAllIconsGrouped()
+        }
+    }
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("桌面图标查看器") }) }
+    ) { padding ->
+        // 使用 LazyColumn 保证整体界面的垂直滚动性
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
+            // 遍历 Map 中的每个目录和其对应的图标列表
+            items(iconMap.entries.toList()) { (folderPath, iconList) ->
+                DirectorySection(folderPath, iconList)
             }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+        }
+
+        // 如果数据为空，显示加载状态
+        if (iconMap.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+    }
+
+}
+@Composable
+fun DirectorySection(folderPath: String, data: List<String>) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        elevation = 4.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // 目录标题
+            Text(
+                text = "目录: $folderPath (${data.size} 个图标)",
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Divider()
+
+            // 静态网格展示（限制行数，避免滚动）
+            StaticHorizontalGrid(data = data, columns = 3)
+        }
+    }
+}
+
+
+@Composable
+fun StaticHorizontalGrid(data: List<String>, columns: Int) {
+    // 将一维数据列表分割成二维的行/列结构
+    val rows = data.chunked(columns)
+
+    // 使用 Column 包含所有的行
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        rows.forEach { rowItems ->
+            // 使用 Row 包含一行中的所有元素
+            Row(modifier = Modifier.fillMaxWidth()) {
+                rowItems.forEach { item ->
+                    // 使用 Modifier.weight(1f) 确保元素在 Row 中平均分配宽度
+                    GridItem(text = item, modifier = Modifier.weight(1f))
+                }
+                // 填充最后一行的空白，确保网格对齐
+                repeat(columns - rowItems.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
+    }
+}
+@Composable
+fun GridItem(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.height(60.dp).padding(4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // 实际的图标渲染 (Text 仅为占位符)
+        val name =  text.split('/').last()
+        Text(text = name, maxLines = 1)
     }
 }
