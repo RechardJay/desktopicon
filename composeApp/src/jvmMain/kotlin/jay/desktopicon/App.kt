@@ -6,28 +6,23 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import java.awt.Desktop
 import java.io.File
-import kotlin.text.Charsets
 
 // 数据类，用于存储解析后的 .desktop 文件信息
 data class IconInfo(
     val name: String,
     val icon: String, // 这可以是图标名称或完整路径
-    val filePath: String
+    val filePath: String,
+    val properties:Map<String, String>
 )
 
 typealias IconMap = Map<String, List<IconInfo>>
@@ -57,7 +52,7 @@ fun parseDesktopFile(filePath: String): IconInfo? {
         val icon = properties["Icon"]
 
         return if (name != null && icon != null) {
-            IconInfo(name, icon, filePath)
+            IconInfo(name, icon, filePath,properties)
         } else {
             null
         }
@@ -151,20 +146,12 @@ fun StaticHorizontalGrid(data: List<IconInfo>, columns: Int) {
 @Composable
 fun IconCard(info: IconInfo) {
     val iconPainter = rememberIconPainter(info.icon)
-    val scope = rememberCoroutineScope()
-
+    var showDetail by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                scope.launch(Dispatchers.IO) {
-                    try {
-                        Desktop.getDesktop().open(File(info.filePath))
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        // 可以选择在这里显示一个错误提示
-                    }
-                }
+                showDetail = true
             },
         elevation = 2.dp
     ) {
@@ -187,5 +174,8 @@ fun IconCard(info: IconInfo) {
                 maxLines = 2
             )
         }
+    }
+    if(showDetail){
+        showDetailNewWindow(info,{showDetail = false})
     }
 }
